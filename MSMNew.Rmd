@@ -1,0 +1,1075 @@
+---
+title: "NewMidshipmanData"
+author: "Micah"
+date: "1/30/2024"
+output: html_document
+---
+#Packages
+```{r}
+library(SEofM) #Standard error of measurement package
+library(ggplot2) #Plotting package
+citation("ggplot2")
+citation("MKinfer")
+library(readxl) #Used to read in and create excel files
+library(dplyr) #Useful manipulation package
+library(tidyr) #Useful manipulation package
+library(scales) #Helpful for making nice scales
+library(gridExtra) #Two panel figure
+library(grid)#Same as above
+library(minpack.lm)
+citation("minpack.lm")
+library(ggdist)
+version
+```
+#Colour Palette
+```{r}
+custom_palette <- c("#dbb765", "#482029", "#e4c6cb")
+
+x <- 1:3
+y <- c(10, 20, 30)
+
+# Create a scatter plot
+plot(x, y, col = custom_palette, pch = 16, cex = 2, xlab = "X", ylab = "Y", main = "Color Test")
+
+```
+
+
+#Reading in data and minor diagnostics
+```{r}
+MidshipmanDataMeasurementType <- read_excel("C:/Users/Micah/Downloads/MidshipmanAging.xlsx", sheet = 1)
+
+#Make dataframes by rep status
+MidshipmanDataMeasurementType.gmales <- subset(MidshipmanDataMeasurementType, MidshipmanDataMeasurementType$Type == "GM")
+MidshipmanDataMeasurementType.smales <- subset(MidshipmanDataMeasurementType, MidshipmanDataMeasurementType$Type == "SM")
+MidshipmanDataMeasurementType.females <- subset(MidshipmanDataMeasurementType, MidshipmanDataMeasurementType$Type == "F")
+
+
+
+MidshipmanDataMeasurementType <- rbind(MidshipmanDataMeasurementType.gmales, MidshipmanDataMeasurementType.smales, MidshipmanDataMeasurementType.females)
+
+mean(MidshipmanDataMeasurementType.smales$SL_cm)
+
+head(MidshipmanDataMeasurementType)
+
+summary(MidshipmanDataMeasurementType)
+
+frequency_table <- table(MidshipmanDataMeasurementType$BurnAge)
+percentage_table <- prop.table(frequency_table) * 100
+
+age_df <- data.frame(age = as.numeric(names(frequency_table)), frequency = as.numeric(frequency_table), percentage = as.numeric(percentage_table))
+
+#Overall histogram of burn ages
+tiff("MSM_Age_Overall_Hist.tiff", units = "in", width = 6, height = 4, res = 300)
+ggplot(age_df, aes(x = age, y = percentage)) +
+  geom_bar(stat = "identity", width = 1, fill = "skyblue", colour = "black") +
+  labs(x = "Age", y = "Percentage") +
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+dev.off()
+
+plot.A <- ggplot(data = MidshipmanDataMeasurementType, aes(x = Type, y = Mass_g, fill = Type))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_fill_manual(values = custom_palette)+
+  labs(x = "Type", y = "Weight (g)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+plot.B <- ggplot(data = MidshipmanDataMeasurementType, aes(x = Type, y = SL_cm, fill = Type))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_fill_manual(values = custom_palette)+
+  labs(x = "Type", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+#Figure 5
+tiff("MSM_Size_Types_Boxplot.tiff", units = "in", width = 6, height = 6, res = 120)
+grid.arrange(arrangeGrob(plot.A, top = textGrob("A", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(plot.B, top = textGrob("B", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), nrow = 2)
+dev.off()
+
+
+adonis2(MidshipmanDataMeasurementType$BurnAge ~ MidshipmanDataMeasurementType$Type*MidshipmanDataMeasurementType$SL_cm)
+
+tiff("MSM_Age_Scatterplot.tiff", units = "in", width = 6, height = 4, res = 300)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge, y = SL_cm))+
+  geom_point()+
+  scale_x_continuous(breaks = seq(1,18, by = 1))+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+dev.off()
+
+tiff("MSM_Age_Wgt_Scatterplot.tiff", units = "in", width = 6, height = 4, res = 300)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge, y = Mass_g))+
+  geom_point()+
+  scale_x_continuous(breaks = seq(1,18, by = 1))+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+dev.off()
+
+annotation <- data.frame(x = c(12,12), y = c(300, 275), label = c("y = 0.0046*x^3.34", "R2 = 0.951"))
+
+tiff("MSM_Len_Wgt_Scatterplot.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = SL_cm, y = Mass_g, col = Type))+
+  geom_point()+
+  labs(x = "Standard Length (cm)", y = "Weight (g)")+
+  stat_smooth(method = "nls", formula = y~ a*x^b, method.args = list(start = list(a = 0.0046, b = 3.34)), se = F)+
+  scale_color_manual(values = custom_palette)+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+LenWgtlm <- glm(Mass_g ~ I(SL_cm^3), data = MidshipmanDataMeasurementType)
+
+power_model <- function(SL_cm, a, b) {
+  b * SL_cm^a 
+}
+nls_fit$r.squared
+nls_fit <- nlsLM(Mass_g ~ power_model(SL_cm, a, b), data = MidshipmanDataMeasurementType, start = list(a = 3, b = 0.01))
+summary(nls_fit)
+
+SST <- sum((MidshipmanDataMeasurementType.females$Mass_g - mean(MidshipmanDataMeasurementType.females$Mass_g))^2)
+RSS <- sum(resid(nls_fit_females)^2)
+R2 <- 1 - (RSS / SST)
+
+#Split by type
+nls_fit_gmales <- nlsLM(Mass_g ~ power_model(SL_cm, a, b), data = MidshipmanDataMeasurementType.gmales, start = list(a = 3, b = 0.01))
+summary(nls_fit_gmales)
+
+nls_fit_smales <- nlsLM(Mass_g ~ power_model(SL_cm, a, b), data = MidshipmanDataMeasurementType.smales, start = list(a = 3, b = 0.01))
+summary(nls_fit_smales)
+
+nls_fit_females <- nlsLM(Mass_g ~ power_model(SL_cm, a, b), data = MidshipmanDataMeasurementType.females, start = list(a = 3, b = 0.01))
+summary(nls_fit_females)
+
+
+
+nls_fit_full <- nlsLM(Mass_g ~ ifelse(Type == "GM", a_gmales * SL_cm^b_gmales, ifelse(Type == "SM", a_smales * SL_cm^b_smales, a_females * SL_cm^b_females)), data = MidshipmanDataMeasurementType, start = list(a_gmales = 0.0046, b_gmales = 3.34, a_smales = 0.0050, b_smales = 3.30, a_females = 0.0046, b_females = 3.34))
+
+summary(nls_fit_full)
+
+aic_gmales <- AIC(nls_fit_gmales)
+aic_smales <- AIC(nls_fit_smales)
+aic_females <- AIC(nls_fit_females)
+aic_combined <- AIC(nls_fit)
+aic_full <- AIC(nls_fit_full)
+
+
+lrt <- lrtest(nls_fit, nls_fit_full)
+print(lrt)
+```
+
+##Juvenile Growth Data
+```{r}
+MidshipmanJuveniles <- read_excel("C:/Users/Micah/Downloads/GrowthRateEstimates.xlsx", sheet = 3)
+MidshipmanJuveniles2 <- read_excel("C:/Users/Micah/Downloads/GrowthRateEstimates.xlsx", sheet = 5)
+
+MidshipmanJuveniles21 <- subset(MidshipmanJuveniles2, MidshipmanJuveniles2$Age == 1)
+
+mean(MidshipmanJuveniles21$SL)
+
+marg <- qt(0.975, 14)*sd(MidshipmanJuveniles21$SL)/sqrt(15)
+
+low <- mean(MidshipmanJuveniles21$SL) - marg
+high <- mean(MidshipmanJuveniles21$SL) + marg
+
+hist(MidshipmanJuveniles$average)
+
+#VBGF from known age juveniles
+
+LinfF <- 22.4
+LinfGM <- 31
+LinfSM <-20.7
+L0 <- 2.0351613
+
+plot(MidshipmanJuvenilesCold$sl ~ MidshipmanJuvenilesCold$averageyrs)
+
+MidshipmanJuveniles$averageyrs <- MidshipmanJuveniles$average/365
+
+MidshipmanJuvenilesCold <- subset(MidshipmanJuveniles, MidshipmanJuveniles$temp == "C")
+MidshipmanJuvenilesWarm <- subset(MidshipmanJuveniles, MidshipmanJuveniles$temp == "W")
+
+
+MidshipmanJuveniles_N <- subset(MidshipmanJuveniles, MidshipmanJuveniles$exp == "N")
+
+MidshipmanJuvenilesCold_N <- subset(MidshipmanJuvenilesCold, MidshipmanJuvenilesCold$exp == "N")
+
+a = -.16
+#males
+mod_juv_gm = nls(sl ~ (LinfGM - (LinfGM - L0)*2.718281^(a*averageyrs)),start = list(a = -0.25, LinfGM = 37),data = MidshipmanJuvenilesCold_N)
+MidshipmanJuveniles$pred = predict(mod_juv_gm, MidshipmanJuveniles)
+a = coef(mod_juv_gm)
+summary(mod_juv_gm)
+#females
+mod_juv_f = nls(sl ~ (LinfF - (LinfF - L0)*2.718281^(a*averageyrs)),start = list(a=1),data = MidshipmanJuvenilesCold_N)
+MidshipmanJuveniles$pred = predict(mod_juv_f, MidshipmanJuveniles)
+a = coef(mod_juv_f)
+summary(mod_juv_f)
+#Sneakers
+mod_juv_sm = nls(sl ~ (LinfSM - (LinfSM - L0)*2.718281^(a*averageyrs)),start = list(a=1),data = MidshipmanJuvenilesCold_N)
+MidshipmanJuveniles$pred = predict(mod_juv_sm, MidshipmanJuveniles)
+a = coef(mod_juv_sm)
+summary(mod_juv_sm)
+
+#Using cold data, we get the functions below
+VBGF_juvcold_gm_fun <- function(x) (LinfGM - (LinfGM - L0)*2.718281^(-.171*x))
+VBGF_juvcold_f_fun <- function(x) (LinfF - (LinfF - L0)*2.718281^(-.245*x))
+VBGF_juvcold_sm_fun <- function(x) (LinfSM - (LinfSM - L0)*2.718281^(-.267*x))
+
+#Using warm data, we get the functions below
+VBGF_juv_gm_fun <- function(x) (LinfGM - (LinfGM - L0)*2.718281^(-.168*x))
+VBGF_juv_f_fun <- function(x) (LinfF - (LinfF - L0)*2.718281^(-.243*x))
+VBGF_juv_sm_fun <- function(x) (LinfSM - (LinfSM - L0)*2.718281^(-.203*x))
+
+ggplot() + 
+    stat_function(fun = VBGF_juv_f_fun, color = "red", lwd = 1.5)+
+    stat_function(fun = VBGF_juv_gm_fun, color = "blue", lwd =1.5)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Years", y = "Standard Length (cm)")+
+    theme_bw()
+
+
+#Based on known age 1 and 0 individuals
+#males
+mod_juv_gm2 = nls(SL ~ (LinfGM - (LinfGM - L0)*2.718281^(a*Age)),start = list(a=1),data = MidshipmanJuveniles2)
+MidshipmanJuveniles2$pred = predict(mod_juv_gm2, MidshipmanJuveniles2)
+a = coef(mod_juv_gm2)
+summary(mod_juv_gm2)
+#females
+mod_juv_f2 = nls(SL ~ (LinfF - (LinfF - L0)*2.718281^(a*Age)),start = list(a=1),data = MidshipmanJuveniles2)
+MidshipmanJuveniles2$pred = predict(mod_juv_f2, MidshipmanJuveniles2)
+a = coef(mod_juv_f2)
+summary(mod_juv_f2)
+#Sneakers
+mod_juv_sm2 = nls(SL ~ (LinfSM - (LinfSM - L0)*2.718281^(a*Age)),start = list(a=1),data = MidshipmanJuveniles2)
+MidshipmanJuveniles2$pred = predict(mod_juv_sm2, MidshipmanJuveniles2)
+a = coef(mod_juv_sm2)
+summary(mod_juv_sm2)
+
+VBGF_juv_gm2_fun <- function(x) (LinfGM - (LinfGM - L0)*2.718281^(-.166*x))
+VBGF_juv_f2_fun <- function(x) (LinfF - (LinfF - L0)*2.718281^(-.245*x))
+VBGF_juv_sm2_fun <- function(x) (LinfSM - (LinfSM - L0)*2.718281^(-.271*x))
+
+##How well do these models fit the data?
+length_observed_gm <- MidshipmanDataMeasurementType.gmales$SL_cm
+length_predicted_gm <- VBGF_juvcold_gm_fun(MidshipmanDataMeasurementType.gmales$BurnAge)
+
+residuals_gm <- length_observed_gm - length_predicted_gm
+
+# Calculate R-squared value
+SS_total_gm <- sum((length_observed_gm - mean(length_observed_gm))^2)
+SS_residual_gm <- sum(residuals_gm^2)
+R_squared_gm <- 1 - (SS_residual_gm / SS_total_gm)
+
+
+length_observed_gm2 <- MidshipmanDataMeasurementType.gmales$SL_cm
+length_predicted_gm2 <- VBGF_juv_gm2_fun(MidshipmanDataMeasurementType.gmales$BurnAge)
+
+residuals_gm2 <- length_observed_gm2 - length_predicted_gm2
+
+# Calculate R-squared value
+SS_total_gm2 <- sum((length_observed_gm2 - mean(length_observed_gm2))^2)
+SS_residual_gm2 <- sum(residuals_gm2^2)
+R_squared_gm2 <- 1 - (SS_residual_gm2 / SS_total_gm2)
+
+
+#Female
+length_observed_f <- MidshipmanDataMeasurementType.females$SL_cm
+length_predicted_f <- VBGF_juvcold_f_fun(MidshipmanDataMeasurementType.females$BurnAge)
+
+residuals_f <- length_observed_f - length_predicted_f
+
+# Calculate R-squared value
+SS_total_f <- sum((length_observed_f - mean(length_observed_f))^2)
+SS_residual_f <- sum(residuals_f^2)
+R_squared_f <- 1 - (SS_residual_f / SS_total_f)
+
+
+length_observed_f2 <- MidshipmanDataMeasurementType.females$SL_cm
+length_predicted_f2 <- VBGF_juv_f2_fun(MidshipmanDataMeasurementType.females$BurnAge)
+
+residuals_f2 <- length_observed_f2 - length_predicted_f2
+
+# Calculate R-squared value
+SS_total_f2 <- sum((length_observed_f2 - mean(length_observed_f2))^2)
+SS_residual_f2 <- sum(residuals_f2^2)
+R_squared_f2 <- 1 - (SS_residual_f2 / SS_total_f2)
+
+
+#Sneaker
+length_observed_sm <- MidshipmanDataMeasurementType.smales$SL_cm
+length_predicted_sm <- VBGF_juvcold_sm_fun(MidshipmanDataMeasurementType.smales$BurnAge)
+
+residuals_sm <- length_observed_sm - length_predicted_sm
+
+# Calculate R-squared value
+SS_total_sm <- sum((length_observed_sm - mean(length_observed_sm))^2)
+SS_residual_sm <- sum(residuals_sm^2)
+R_squared_sm <- 1 - (SS_residual_sm / SS_total_sm)
+
+
+length_observed_sm2 <- MidshipmanDataMeasurementType.smales$SL_cm
+length_predicted_sm2 <- VBGF_juv_sm2_fun(MidshipmanDataMeasurementType.smales$BurnAge)
+
+residuals_sm2 <- length_observed_sm2 - length_predicted_sm2
+
+# Calculate R-squared value
+SS_total_sm2 <- sum((length_observed_sm2 - mean(length_observed_sm2))^2)
+SS_residual_sm2 <- sum(residuals_sm2^2)
+R_squared_sm2 <- 1 - (SS_residual_sm2 / SS_total_sm2)
+
+##"#008080", "#FFA500", "#800080"
+
+ggplot() + 
+    stat_function(fun = VBGF_juv_f_fun, color = "#008080", lwd = 1.5)+
+    stat_function(fun = VBGF_juv_gm_fun, color = "#FFA500", lwd =1.5)+
+    stat_function(fun = VBGF_juv_sm_fun, color = "#800080", lwd =1.5)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Age", y = "Standard Length (cm)")+
+    theme_bw()
+
+ggplot() + 
+    stat_function(fun = VBGF_juv_f2_fun, color = "#008080", lwd = 1.5)+
+    stat_function(fun = VBGF_juv_gm2_fun, color = "#FFA500", lwd =1.5)+
+    stat_function(fun = VBGF_juv_sm2_fun, color = "#800080", lwd =1.5)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Age", y = "Standard Length (cm)")+
+    theme_bw()
+
+MidshipmanDataMeasurementType.gmales$AgePred1 <- round(-log((LinfGM - MidshipmanDataMeasurementType.gmales$SL_cm) / (LinfGM - L0)) / 0.171)
+MidshipmanDataMeasurementType.gmales$AgePred2 <- round(-log((LinfGM - MidshipmanDataMeasurementType.gmales$SL_cm) / (LinfGM - L0)) / 0.166)
+
+MidshipmanDataMeasurementType.females$AgePred1 <- round(-log((LinfF - MidshipmanDataMeasurementType.females$SL_cm) / (LinfF - L0)) / 0.245)
+MidshipmanDataMeasurementType.females$AgePred2 <- round(-log((LinfF - MidshipmanDataMeasurementType.females$SL_cm) / (LinfF - L0)) / 0.245)
+
+MidshipmanDataMeasurementType.smales$AgePred1 <- round(-log((LinfF - MidshipmanDataMeasurementType.smales$SL_cm) / (LinfF - L0)) / 0.267)
+MidshipmanDataMeasurementType.smales$AgePred2 <- round(-log((LinfF - MidshipmanDataMeasurementType.smales$SL_cm) / (LinfF - L0)) / 0.271)
+
+#All fairly close
+MidshipmanDataMeasurementType.gmales$AgeDiff1 <- MidshipmanDataMeasurementType.gmales$BurnAge - MidshipmanDataMeasurementType.gmales$AgePred1
+MidshipmanDataMeasurementType.gmales$AgeDiff2 <- MidshipmanDataMeasurementType.gmales$BurnAge - MidshipmanDataMeasurementType.gmales$AgePred2
+
+MidshipmanDataMeasurementType.females$AgeDiff1 <- MidshipmanDataMeasurementType.females$BurnAge - MidshipmanDataMeasurementType.females$AgePred1
+MidshipmanDataMeasurementType.females$AgeDiff2 <- MidshipmanDataMeasurementType.females$BurnAge - MidshipmanDataMeasurementType.females$AgePred2
+
+MidshipmanDataMeasurementType.smales$AgeDiff1 <- MidshipmanDataMeasurementType.smales$BurnAge - MidshipmanDataMeasurementType.smales$AgePred1
+MidshipmanDataMeasurementType.smales$AgeDiff2 <- MidshipmanDataMeasurementType.smales$BurnAge - MidshipmanDataMeasurementType.smales$AgePred2
+
+MidshipmanAgeDiffs <- rbind(MidshipmanDataMeasurementType.females, MidshipmanDataMeasurementType.gmales, MidshipmanDataMeasurementType.smales)
+
+table(MidshipmanDataMeasurementType.females$AgeDiff2)
+
+adonis2(MidshipmanAgeDiffs$AgePred1 ~ MidshipmanAgeDiffs$Type*MidshipmanAgeDiffs$BurnAge)
+
+ggplot(data = MidshipmanAgeDiffs, aes(x = BurnAge,y = AgeDiff2, col = Type))+
+  geom_point(position = position_jitter(width = 0.3))
+
+ggplot(data = MidshipmanAgeDiffs, aes(x = Type,y = AgeDiff2, fill = Type))+
+  geom_boxplot()
+
+frequency_table <- table(MidshipmanAgeDiffs$Type, MidshipmanAgeDiffs$AgeDiff1)
+chi_square_test <- chisq.test(frequency_table)
+
+print("Expected Frequencies:")
+print(chi_square_test$expected)
+
+print("Observed Frequencies:")
+print(chi_square_test$observed)
+
+```
+
+#Compare sexes and types
+```{r}
+
+age_df <- MidshipmanDataMeasurementType %>%
+  group_by(Type, BurnAge) %>%
+  summarise(frequency = n()) %>%
+  mutate(percentage = frequency / sum(frequency) * 100)
+
+age_df_gm <- subset(age_df, age_df$Type == "GM")
+age_df_sm <- subset(age_df, age_df$Type == "SM")
+age_df_f <- subset(age_df, age_df$Type == "F")
+
+mean(age_df_f$BurnAge)
+
+
+
+# Plot
+age_hist_gm <- ggplot(age_df_gm, aes(x = BurnAge, y = percentage, fill = Type)) +
+  geom_bar(stat = "identity",width = 1,position = position_dodge2(width = 0), colour = "black")+
+  scale_fill_manual(values = "#FFA500")+
+  scale_x_continuous(limits = c(1, 18))+
+  labs(x = "Age", y = "Percentage")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+age_hist_sm <- ggplot(age_df_sm, aes(x = BurnAge, y = percentage, fill = Type)) +
+  geom_bar(stat = "identity",width = 1,position = position_dodge2(width = 0), colour = "black")+
+  scale_fill_manual(values = "#800080")+
+  scale_x_continuous(limits = c(1, 18))+
+  labs(x = "Age", y = "Percentage")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+age_hist_f <- ggplot(age_df_f, aes(x = BurnAge, y = percentage, fill = Type)) +
+  geom_bar(stat = "identity",width = 1,position = position_dodge2(width = 0), colour = "black")+
+  scale_fill_manual(values = "#008080")+
+  scale_x_continuous(limits = c(1, 18))+
+  labs(x = "Age", y = "Percentage")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+tiff("MSM_Ages_Types_Hist.tiff", units = "in", width = 6, height = 9, res = 120)
+grid.arrange(arrangeGrob(age_hist_f, top = textGrob("A", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(age_hist_gm, top = textGrob("B", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(age_hist_sm,top = textGrob("C", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), nrow = 3)
+dev.off()
+
+#Female vs male
+tiff("F_M_Ages_Hist.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge, fill = Sex))+
+  geom_histogram(binwidth = 1, col = "black")+ facet_grid(~Type) + theme_classic()+
+  scale_x_continuous(breaks= seq(2,17, by =1))
+dev.off()
+
+ggplot(data = MidshipmanDataMeasurementType, aes(x = SL_cm, fill = Sex))+
+  geom_histogram(binwidth = 2)+ facet_grid(~Sex) + theme_classic()+
+  scale_x_continuous(breaks= pretty_breaks())
+
+ggplot(data = MidshipmanDataMeasurementType, aes(y = BurnAge, x = Sex, fill = Sex))+
+  geom_violin()+
+  theme_classic()
+
+perm.t.test(data = MidshipmanDataMeasurementType, BurnAge ~ Sex) #This is a permutation two sample t-test, shows you the regular result and permutated result. Just runs a thousand computer simulated results to produce distribution rather than just creating a distribution to match against. Females are younger than males on average
+
+perm.t.test(data = MidshipmanDataMeasurementType, SL_cm ~ Sex) #Females are smaller on average than males
+
+tiff("F_M_SizeAtAge.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = as.factor(BurnAge), y = SL_cm, fill = Sex))+
+  geom_boxplot()+
+  labs(x = "Age",
+       y = "SL_cm") +
+  theme_classic()
+dev.off()
+
+ggplot(data = MidshipmanDataMeasurementType, aes(x = as.factor(BurnAge), y = Mass_g, fill = Sex))+
+  geom_boxplot()+
+  theme_classic()
+
+#Sneaker vs Guarder
+MidshipmanMales <- subset(MidshipmanDataMeasurementType, MidshipmanDataMeasurementType$Sex == "M")
+
+tiff("GM_SM_Age_Hist.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(data = MidshipmanMales, aes(x = BurnAge, fill = Type))+
+  geom_histogram(binwidth = 1, col = "black")+ facet_grid(~Type) + theme_classic()+
+  scale_x_continuous(breaks= seq(2,17, by = 1))
+dev.off()
+
+ggplot(data = MidshipmanMales, aes(x = SL_cm, fill = Type))+
+  geom_histogram(binwidth = 2)+ facet_grid(~Type) + theme_classic()+
+  scale_x_continuous(breaks= pretty_breaks())
+
+MidshipmanMalesU9 <- subset(MidshipmanMales, MidshipmanMales$BurnAge < 9)
+
+MidshipmanMales3 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 3)
+MidshipmanMales4 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 4)
+MidshipmanMales5 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 5)
+MidshipmanMales6 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 6)
+MidshipmanMales7 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 7)
+MidshipmanMales8 <- subset(MidshipmanMales, MidshipmanMales$BurnAge == 8)
+MidshipmanMales4up <- subset(MidshipmanMales, MidshipmanMales$BurnAge > 3)
+
+perm.t.test(MidshipmanMales3$SL_cm ~ MidshipmanMales3$Type)
+perm.t.test(MidshipmanMales4$SL_cm ~ MidshipmanMales4$Type)
+perm.t.test(MidshipmanMales5$SL_cm ~ MidshipmanMales5$Type)
+perm.t.test(MidshipmanMales6$SL_cm ~ MidshipmanMales6$Type)
+perm.t.test(MidshipmanMales7$SL_cm ~ MidshipmanMales7$Type)
+perm.t.test(MidshipmanMales8$SL_cm ~ MidshipmanMales8$Type)
+
+adonis2(MidshipmanMales$SL_cm ~ MidshipmanMales$Type*MidshipmanMales$BurnAge)
+
+
+tiff("GM_SM_SizeAtAge.tiff", units = "in", width = 6, height = 4, res = 1200, compression = "lzw")
+ggplot(data = MidshipmanMalesU9, aes(x = as.factor(BurnAge), y = SL_cm, fill = Type))+
+  scale_fill_manual(values = c("#482029", "#e4c6cb"))+
+  geom_boxplot()+
+  labs(x = "Age (years)", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+ggplot(data = MidshipmanMalesU9, aes(x = as.factor(BurnAge), y = Mass_g, fill = Type))+
+  geom_boxplot()+
+  theme_classic()
+
+```
+#Aneesh plot
+```{r}
+library(ggbeeswarm) 
+library(ggdist)
+library(sdamr)
+
+
+ggplot(MidshipmanDataMeasurementType, aes(x = Type, y = BurnAge, fill = Type))+
+  theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))+
+  geom_point(position = position_jitternudge(jitter.height = 0.05, jitter.width = 0.1, nudge.x = -0.1), size = 2, alpha = 0.6, aes(colour = Type))+
+  stat_halfeye(adjust = 1,# adjust bandwidth
+             justification = -0.1,     # move to the right
+             width = 0.5, # adjusts the height of the distributions
+             .width = 0, # remove the sub interval
+             point_colour = NA,
+             alpha = 0.9) +
+  geom_boxplot(width = 0.05, outlier.color = NA, alpha = 0.9)+
+  stat_summary(fun=mean, geom="point", size=2, colour = "black")+
+  scale_fill_manual(values = custom_palette, name = "Type")+
+  scale_colour_manual(values = custom_palette, name = "Type")+
+  guides(fill = "none", colour = "none")+
+  coord_flip()
+```
+
+
+#VBGF
+```{r}
+L0 <- 2.0351613
+
+MidshipmanJuveniles2zeros <- subset(MidshipmanJuveniles2, MidshipmanJuveniles2$Age == 0)
+
+sd(MidshipmanJuveniles2zeros$SL)/sqrt(15)
+
+solve()
+
+mean(MidshipmanDataMeasurementType.females$BurnAge)
+?nls
+
+#VBGF for guarder males
+mod_gm = nls(SL_cm ~ (LinfGM - (LinfGM - L0)*exp(a*BurnAge)),start = list(a=-.1, LinfGM = 31),data = MidshipmanDataMeasurementType.gmales)
+
+MidshipmanDataMeasurementType.gmales$pred = predict(mod_gm,MidshipmanDataMeasurementType.gmales)
+coef(mod_gm)#-0.165, 30.28
+summary(mod_gm)
+VBGF_gmal_fun <- function(x) (30.280734 - (30.280734 - L0)*2.718281^(-.165*x))
+SST <- sum((MidshipmanDataMeasurementType.gmales$SL_cm - mean(MidshipmanDataMeasurementType.gmales$SL_cm))^2)
+RSS <- sum(resid(mod_gm)^2)
+R2 <- 1 - (RSS / SST)
+?uniroot
+root <- uniroot(VBGF_gmal_fun, interval = c(-1, 5))
+
+eps <- 1e-7  # small perturbation
+derivative <- (VBGF_gmal_fun(root$root + eps) - VBGF_gmal_fun(root$root - eps)) / (2 * eps)
+
+# Estimate the standard error based on the curvature
+curvature <- abs(derivative)  # Simplified example
+standard_error <- 0.0656 / sqrt(curvature)
+
+A95_gm <- -0.421+(2.996/0.165)
+M_gm <- (2.996*0.165)/(2.996+0.165*-0.421)
+
+ggplot(MidshipmanDataMeasurementType.gmales, aes(BurnAge , SL_cm)) + 
+    geom_point(color = "purple", size = 2) +
+    stat_function(fun = VBGF_gmal_fun)
+
+ggplot(data = MidshipmanDataMeasurementType.gmales, aes(x = SL_cm, y = pred))+
+  geom_point()+ geom_abline(slope=1, intercept=0) + theme_classic()
+
+tiff("MSM_VBGF_Males.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(MidshipmanMales, aes(BurnAge , SL_cm, col = Type)) + 
+    geom_point(size = 2) +
+    stat_function(fun = VBGF_gmal_fun, color = "red")+
+    stat_function(fun = VBGF_sm_fun1, color = "blue")+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,17))+
+    theme_classic()
+dev.off()
+
+#SneakerMales
+mod_sm = nls(SL_cm ~ (LinfSM - (LinfSM - L0)*2.718281^(a*BurnAge)),start = list(a=-.1, LinfSM = 21),data = MidshipmanDataMeasurementType.smales)
+
+MidshipmanDataMeasurementType.smales$pred = predict(mod_sm,MidshipmanDataMeasurementType.smales)
+summary(mod_sm)
+coef(mod_sm) #-0.29
+
+SST <- sum((MidshipmanDataMeasurementType.smales$SL_cm - mean(MidshipmanDataMeasurementType.smales$SL_cm))^2)
+RSS <- sum(resid(mod_sm)^2)
+R2 <- 1 - (RSS / SST)
+
+
+
+VBGF_sm_fun1 <- function(x) (19.5321645  - (19.5321645  - L0)*2.718281^(-.32539*x))
+
+root <- uniroot(VBGF_sm_fun1, interval = c(-1, 5))
+
+eps <- 1e-7  # Small perturbation
+derivative <- (VBGF_sm_fun1(root$root + eps) - VBGF_sm_fun1(root$root - eps)) / (2 * eps)
+
+# Estimate the standard error based on the curvature
+curvature <- abs(derivative)  # Simplified example
+standard_error <- .116 / sqrt(curvature)
+
+A95_sm<- -0.3011+(2.996/0.32539)
+M_sm <- (2.996*0.32539)/(2.996+0.32539*-0.3011)
+
+#Females
+mod_f = nls(SL_cm ~ (LinfF - (LinfF - L0)*2.718281^(a*BurnAge)),start = list(a=-.1, LinfF = 20),data = MidshipmanDataMeasurementType.females)
+MidshipmanDataMeasurementType.females$pred = predict(mod_f,MidshipmanDataMeasurementType.females)
+coef(mod_f)#0.273
+summary(mod_f)
+SST <- sum((MidshipmanDataMeasurementType.females$SL_cm - mean(MidshipmanDataMeasurementType.females$SL_cm))^2)
+RSS <- sum(resid(mod_f)^2)
+R2 <- 1 - (RSS / SST)
+
+
+VBGF_f_fun <- function(x) (21.813 - (21.813 - L0)*2.718281^(-.273*x))
+
+
+root <- uniroot(VBGF_f_fun, interval = c(-1, 5))
+
+eps <- 1e-7  # small perturbation
+derivative <- (VBGF_f_fun(root$root + eps) - VBGF_f_fun(root$root - eps)) / (2 * eps)
+
+# Estimate the standard error based on the curvature
+curvature <- abs(derivative)  # Simplified example
+standard_error <- 0.0560 / sqrt(curvature)
+
+A95_F<- -0.371+(2.996/0.257)
+M_F <- (2.996*0.257)/(2.996+0.257*-0.371)
+
+(LinfF - (LinfF - L0)*2.718281^(-.257*-0.3706))
+
+
+#All VBGFs
+residuals_f <- residuals(mod_f)
+residuals_gm <- residuals(mod_gm)
+residuals_sm <- residuals(mod_sm)
+residuals_data <- data.frame(Function = rep(c("Function_F", "Function_GM", "Function_SM"), Residuals = c(residuals_f, residuals_gm, residuals_sm)))
+
+residuals_data <- as.data.frame(c(residuals_f, residuals_gm, residuals_sm))
+residuals_data$Function <- "x"
+residuals_data$Function[1:138] <- "Female"
+residuals_data$Function[139:314] <- "Guarder"
+residuals_data$Function[315:371] <- "Sneaker"
+colnames(residuals_data) <- c("Residuals", "Function")
+
+adonis2(residuals_data$Residuals ~ residuals_data$Function, data = residuals_data, permutations = 9999, distance = "euclidean")
+
+tiff("MSM_VBGF_All_inset.tiff", units = "in", width = 6, height = 4, res = 300)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge , y = SL_cm, col = Type)) +
+  scale_color_manual(values = custom_palette)+
+    #geom_point(position = position_jitter(width = 0.2))+
+    stat_function(fun = VBGF_f_fun, color = "#dbb765", lwd = 2)+
+    stat_function(fun = VBGF_gmal_fun, color = "#482029" ,lwd =2)+
+    stat_function(fun = VBGF_sm_fun1, color = "#e4c6cb",lwd =2)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,1))+
+  scale_y_continuous(breaks= pretty_breaks(), limits = c(0,10))+
+  labs(x = "Age (years)", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 18, face = "bold"), axis.text.x = element_text(size = 14), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 18, face = "bold"), axis.text.y = element_text(size = 14), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+tiff("MSM_VBGF_All.tiff", units = "in", width = 6, height = 4, res = 300)
+ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge , y = SL_cm, col = Type)) +
+  scale_color_manual(values = custom_palette)+
+    geom_point(position = position_jitter(width = 0.2), alpha = 0.5)+
+    stat_function(fun = VBGF_f_fun, color = "#dbb765", xlim = c(0,11), lwd = 1)+
+    stat_function(fun = VBGF_gmal_fun, color = "#482029", xlim = c(0,18) ,lwd =1)+
+    stat_function(fun = VBGF_sm_fun1, color = "#e4c6cb", xlim = c(0,9.5),lwd =1)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Age (years)", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+#Raincloud plots
+#Ok, I cannot do it this way. Annoying.
+ggplot(MidshipmanDataMeasurementType, aes(x = Type, y = BurnAge, fill = Type))+
+  stat_histinterval(adjust = 0.6, width = 1.2, .width = 0, justification = -.2, outline_bars = T, slab_color = "black", breaks = 16)+
+  geom_boxplot(width = 0.2)+
+  scale_fill_manual(values = custom_palette)+
+  scale_y_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  coord_flip()
+
+table(MidshipmanDataMeasurementType.gmales$BurnAge)
+age_hist_bar_gm <- ggplot(MidshipmanDataMeasurementType.gmales, aes(x = Type, y = BurnAge, fill = Type)) +
+  stat_histinterval(adjust = 0.6, width = 2, .width = 0, justification = -.2, outline_bars = T, slab_color = "black", breaks = 15)+
+  geom_boxplot(width = 0.5)+
+  stat_summary(fun.y = "mean", color = "red", shape = 10, size = 1)+
+  scale_fill_manual(values = "#482029")+
+  scale_y_continuous(breaks= pretty_breaks(), limits = c(-1.3,20), expand = c(0.015, 0))+
+  coord_flip()+
+  ylab("Age (years)")+
+  annotate("segment", x = 1.35, xend = 1.35, y = 0, yend = 20, color = "black", size = 1)+
+  annotate("segment", x = 1.35, xend = 3.2, y = 0, yend = 0, color = "black", size = 1)+
+  annotate("text", x = 1.35, y = -0.5, label = "0")+
+  annotate("text", x = 1.98, y = -0.5, label = "10")+
+  annotate("text", x = 2.59, y = -0.5, label = "20")+
+  annotate("text", x = 3.2, y = -0.5, label = "30")+
+  annotate("text", x = 2.265, y = -1.3, label = "Count", angle = 90, size = 5)+
+   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.line.y = element_blank(), axis.ticks.y=element_blank(),axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+table(MidshipmanDataMeasurementType.smales$BurnAge)
+age_hist_bar_sm <- ggplot(MidshipmanDataMeasurementType.smales, aes(x = Type, y = BurnAge, fill = Type)) +
+  stat_histinterval(adjust = 0.6, width = 2, .width = 0, justification = -.2, outline_bars = T, slab_color = "black", breaks = 7)+
+  geom_boxplot(width = 0.5)+
+  stat_summary(fun.y = "mean", color = "red", shape = 10, size = 1)+
+  scale_fill_manual(values = "#e4c6cb")+
+  scale_y_continuous(breaks= pretty_breaks(), limits = c(-1.3,20), expand = c(0.015, 0))+
+  coord_flip()+
+    annotate("segment", x = 1.35, xend = 1.35, y = 0, yend = 20, color = "black", size = 1)+
+  ylab("Age (years)")+
+  annotate("segment", x = 1.35, xend = 3.2, y = 0, yend = 0, color = "black", size = 1)+
+  annotate("text", x = 1.35, y = -.5, label = "0")+
+  annotate("text", x = 2.265, y = -.5, label = "10")+
+  annotate("text", x = 3.2, y = -.5, label = "20")+
+  annotate("text", x = 2.265, y = -1.3, label = "Count", angle = 90, size = 5)+
+   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.line.y = element_blank(), axis.ticks.y=element_blank(),axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+table(MidshipmanDataMeasurementType.females$BurnAge)
+
+age_hist_bar_f <- ggplot(MidshipmanDataMeasurementType.females, aes(x = Type, y = BurnAge, fill = Type)) +
+  stat_histinterval(adjust = 0.6, width = 2, .width = 0, justification = -.2, outline_bars = T, slab_color = "black", breaks = 9)+
+  geom_boxplot(width = 0.5)+
+  stat_summary(fun.y = "mean", color = "red", shape = 10, size = 1)+
+  scale_fill_manual(values = "#dbb765")+
+  scale_y_continuous(breaks= pretty_breaks(), limits = c(-1.3,20), expand = c(0.015, 0))+
+  coord_flip()+
+  ylab("Age (years)")+
+   annotate("segment", x = 1.35, xend = 1.35, y = 0, yend = 20, color = "black", size = 1)+
+  annotate("segment", x = 1.35, xend = 3.2, y = 0, yend = 0, color = "black", size = 1)+
+  annotate("text", x = 1.35, y = -.5, label = "0")+
+  annotate("text", x = 1.98, y = -.5, label = "10")+
+  annotate("text", x = 2.59, y = -0.5, label = "20")+
+  annotate("text", x = 3.2, y = -.5, label = "30")+
+  annotate("text", x = 2.265, y = -1.3, label = "Count", angle = 90, size = 5)+
+    theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.line.y = element_blank(), axis.ticks.y=element_blank(),axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+
+mean(MidshipmanDataMeasurementType.females$BurnAge)
+
+tiff("MSM_Ages_Types_hist_bar.tiff", units = "in", width = 6, height = 9, res = 1000, compression = "lzw")
+grid.arrange(arrangeGrob(age_hist_bar_f, top = textGrob("A", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(age_hist_bar_gm, top = textGrob("B", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(age_hist_bar_sm,top = textGrob("C", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), nrow = 3)
+dev.off()
+
+ggplot(data = MidshipmanDataMeasurementType.gmales, aes(x = SL_cm))+
+  geom_histogram()
+
+```
+
+```{r}
+#Juv growth data
+tiff("MSM_VBGF_All_Juv1.tiff", units = "in", width = 6, height = 4, res = 120)
+Juv1 <- ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge , y = SL_cm, col = Type)) +
+  scale_color_manual(values = custom_palette)+
+    geom_point(position = position_jitter(width = 0.2))+
+    stat_function(fun = VBGF_juvcold_f_fun, color = "#dbb765", xlim = c(0,11.3), lwd = 1)+
+    stat_function(fun = VBGF_juvcold_gm_fun, color = "#482029", xlim = c(0,18.6), lwd =1)+
+    stat_function(fun = VBGF_juvcold_sm_fun, color = "#e4c6cb", xlim = c(0,10.0), lwd =1)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Age", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+tiff("MSM_VBGF_All_Juv2.tiff", units = "in", width = 6, height = 4, res = 120)
+Juv2 <- ggplot(data = MidshipmanDataMeasurementType, aes(x = BurnAge , y = SL_cm, col = Type)) +
+  scale_color_manual(values = custom_palette)+
+    geom_point(position = position_jitter(width = 0.2))+
+    stat_function(fun = VBGF_juv_f2_fun, color = "#dbb765", xlim = c(0,11.3), lwd = 1)+
+    stat_function(fun = VBGF_juv_gm2_fun, color = "#482029",xlim = c(0,18.6), lwd =1)+
+    stat_function(fun = VBGF_juv_sm2_fun, color = "#e4c6cb",xlim = c(0,10.0), lwd =1)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,20))+
+  labs(x = "Age", y = "Standard Length (cm)")+
+   theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"))
+dev.off()
+
+
+tiff("MSM_VBGF_All_Juv.tiff", units = "in", width = 6, height = 6, res = 120)
+grid.arrange(arrangeGrob(Juv1, top = textGrob("Model 1", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), arrangeGrob(Juv2, top = textGrob("Model 2", x = 1, hjust = 1.5, vjust = 1, gp = gpar(fontsize = 14, fontface = "bold"))), nrow = 2)
+dev.off()
+
+#Split up VBGFs
+
+tiff("MSM_VBGF_Females.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(MidshipmanDataMeasurementType.females, aes(BurnAge , SL_cm)) + 
+    geom_point(color = "orange", size = 2) +
+    stat_function(fun = VBGF_f_fun)+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,8))+
+    theme_classic()
+dev.off()
+
+VBGF_f_fun(1)
+VBGF_sm_fun1(1)
+VBGF_gmal_fun(1)
+
+tiff("MSM_VBGF_Females.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(MidshipmanDataMeasurementType.nosneaks, aes(BurnAge, SL_cm, col = Type))+
+         geom_point(size = 2) +
+    stat_function(fun = VBGF_gmal_fun, color = "blue")+
+    stat_function(fun = VBGF_f_fun, color = "red")+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,17))+
+    theme_classic()
+    dev.off()
+
+tiff("MSM_VBGF_Males.tiff", units = "in", width = 6, height = 4, res = 120)
+ggplot(MidshipmanMales, aes(BurnAge, SL_cm, col = Type))+
+         geom_point(size = 2) +
+    stat_function(fun = VBGF_gmal_fun, color = "red")+
+    stat_function(fun = VBGF_sm_fun1, color = "blue")+
+    scale_x_continuous(breaks= pretty_breaks(), limits = c(0,15))+
+    theme_classic()
+    dev.off()
+
+    
+    
+GuardersFemales <- rbind(MidshipmanDataMeasurementType.gmales, MidshipmanDataMeasurementType.females)    
+
+
+ggplot(GuardersFemales, aes(x = as.factor(BurnAge), y = SL_cm, fill = Type))+
+  geom_boxplot()
+
+GuarderFemales5up <- subset(GuardersFemales, GuardersFemales$BurnAge >4)
+
+adonis2(GuarderFemales5up$SL_cm ~ GuarderFemales5up$Type*GuarderFemales5up$BurnAge)
+
+
+```
+
+```{r}
+von_bertalanffy_mod <- function(BurnAge, L_inf, L0, k) {
+  L_inf - (L_inf - L0) * 2.718281^(-k * BurnAge)
+}
+
+MidshipmanDataMeasurementType.gmales <- na.omit(MidshipmanDataMeasurementType.gmales)
+
+params_group1 <- list(L_inf = 30.3, L0 = 2.035, k = 0.165)
+params_group2 <- list(L_inf = 21.8, L0 = 2.035, k = 0.27)
+params_group3 <- list(L_inf = 19.5, L0 = 2.035, k = 0.325)
+
+von_bertalanffy_mod <- function(BurnAge, L_inf, L0, k) {
+  L_inf - (L_inf - L0) * exp(-k * BurnAge)
+}
+
+
+residuals_group1 <- with(MidshipmanDataMeasurementType.gmales, SL_cm - von_bertalanffy_mod(BurnAge, params_group1$L_inf, params_group1$L0, params_group1$k))
+residuals_group2 <- with(MidshipmanDataMeasurementType.females, SL_cm - von_bertalanffy_mod(BurnAge, params_group2$L_inf, params_group2$L0, params_group2$k))
+residuals_group3 <- with(MidshipmanDataMeasurementType.smales, SL_cm - von_bertalanffy_mod(BurnAge, params_group3$L_inf, params_group3$L0, params_group3$k))
+
+fit_model_group1 <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k), 
+                        data = MidshipmanDataMeasurementType.gmales,
+                        start = c(L_inf = params_group1$L_inf, L0 = params_group1$L0, k = params_group1$k))
+
+fit_model_group2 <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k), 
+                        data = MidshipmanDataMeasurementType.females,
+                        start = c(L_inf = params_group2$L_inf, L0 = params_group2$L0, k = params_group2$k))
+
+fit_model_group3 <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k), 
+                        data = MidshipmanDataMeasurementType.smales,
+                        start = c(L_inf = params_group3$L_inf, L0 = params_group3$L0, k = params_group3$k))
+
+# Create a combined data frame
+
+for(i in 1:length(MidshipmanDataMeasurementType$FishID)){
+if(MidshipmanDataMeasurementType$Type[i]=="GM"){
+  MidshipmanDataMeasurementType$SexNum[i] <- 1
+}else if(MidshipmanDataMeasurementType$Type[i]=="SM"){
+  MidshipmanDataMeasurementType$SexNum[i] <- 2
+} else{
+  MidshipmanDataMeasurementType$SexNum[i] <- 3
+}}
+
+fit_model_combined <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k) + SexNum, 
+                          data = MidshipmanDataMeasurementType, 
+                          start = c(L_inf = mean(c(params_group1$L_inf, params_group2$L_inf, params_group3$L_inf)),
+                                    L0 = mean(c(params_group1$L0, params_group2$L0,  params_group3$L0)),
+                                    k = mean(c(params_group1$k, params_group2$k, params_group3$k))), control = nls.control(minFactor = 1e-6, maxiter = 1000000000))
+#library(lmtest)
+
+fit_model_combined2 <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k), 
+                          data = MidshipmanDataMeasurementType, 
+                          start = c(L_inf = mean(c(params_group1$L_inf, params_group2$L_inf, params_group3$L_inf)),
+                                    L0 = mean(c(params_group1$L0, params_group2$L0,  params_group3$L0)),
+                                    k = mean(c(params_group1$k, params_group2$k, params_group3$k))), control = nls.control(minFactor = 1e-6, maxiter = 1000000000))
+
+lr_test <- lrtest(fit_model_combined, fit_model_combined2)
+print(lr_test)
+
+#GM SM
+params_group2 <- list(L_inf = 19.5, L0 = 2.035, k = 0.325)
+
+for(i in 1:length(MidshipmanMales$FishID)){
+if(MidshipmanMales$Type[i]=="GM"){
+  MidshipmanMales$TypeNum[i] <- 1
+}else{
+  MidshipmanMales$TypeNum[i] <- 2
+}}
+
+fit_model_combined <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k) + TypeNum, 
+                          data = MidshipmanMales, 
+                          start = c(L_inf = mean(c(params_group1$L_inf, params_group2$L_inf)),
+                                    L0 = mean(c(params_group1$L0, params_group2$L0)),
+                                    k = mean(c(params_group1$k, params_group2$k))), control = nls.control(minFactor = 1e-6, maxiter = 1000000000))
+library(lmtest)
+
+fit_model_combined2 <- nls(SL_cm ~ von_bertalanffy_mod(BurnAge, L_inf, L0, k), 
+                          data = MidshipmanMales, 
+                          start = c(L_inf = mean(c(params_group1$L_inf, params_group2$L_inf)),
+                                    L0 = mean(c(params_group1$L0, params_group2$L0)),
+                                    k = mean(c(params_group1$k, params_group2$k))), control = nls.control(minFactor = 1e-6, maxiter = 1000000000))
+
+lr_test <- lrtest(fit_model_combined, fit_model_combined2)
+print(lr_test)
+
+```
+
+#Optimum length
+```{r}
+##Calculate t opt
+#GM
+gm_average_lengths <- aggregate(SL_cm ~ BurnAge, data = MidshipmanDataMeasurementType.gmales , FUN = mean)
+print(gm_average_lengths)
+#mean(MidshipmanDataMeasurementType.gmales$SL_cm)
+
+10^(1.0421*log(LinfGM, base = 10)-0.2742)
+
+#SM
+sm_average_lengths <- aggregate(SL_cm ~ BurnAge, data = MidshipmanDataMeasurementType.smales , FUN = mean)
+print(sm_average_lengths)
+10^(1.0421*log(LinfSM, base = 10)-0.2742)
+10^(0.8979*log(LinfSM, base = 10)-0.0782)
+
+#F
+f_average_lengths <- aggregate(SL_cm ~ BurnAge, data = MidshipmanDataMeasurementType.females , FUN = mean)
+print(f_average_lengths)
+10^(1.0421*log(LinfF, base = 10)-0.2742)
+
+
+```
+
+##Regions
+```{r}
+ggplot(data = MidshipmanDataMeasurementType.gmales, aes(x = BurnAge, y = SL_cm, col = Location))+
+  geom_point()
+
+ggplot(data = MidshipmanDataMeasurementType, aes(x = Location, y = SL_cm, fill = Type))+
+  geom_boxplot()+
+  theme_classic()
+
+#AIC for GM vs Females, adding sex is best model
+full_model <- lm(log(SL_cm) ~ log(BurnAge) * Sex * Location, data = MidshipmanDataMeasurementType.nosneaks)
+
+# Display the AIC of the full model
+aic_full_model <- AIC(full_model)
+cat("AIC of the full model:", aic_full_model, "\n")
+
+# Now, fit models with subsets of predictors and compare AIC
+# Model with log_age and sex
+model1 <- lm(log(SL_cm) ~ log(BurnAge) * Sex, data = MidshipmanDataMeasurementType.nosneaks)
+aic_model1 <- AIC(model1)
+summary(model1)
+cat("AIC of the model with log_age and sex:", aic_model1, "\n")
+
+model2 <- lm(log(SL_cm) ~ log(BurnAge) * Location, data = MidshipmanDataMeasurementType.nosneaks)
+aic_model2 <- AIC(model2)
+summary(model2)
+cat("AIC of the model with log_age and Region:", aic_model2, "\n")
+
+# Model with log_age and location
+model3 <- lm(log(SL_cm) ~ log(BurnAge), data = MidshipmanDataMeasurementType.nosneaks)
+aic_model3 <- AIC(model3)
+cat("AIC of the model with log_age:", aic_model3, "\n")
+
+best_model <- which.min(c(aic_full_model, aic_model1, aic_model2, aic_model3))
+cat("Best model:", best_model, "\n")
+
+#GM vs SM
+full_model <- lm(log(SL_cm) ~ log(BurnAge) * Type * Location, data = MidshipmanMales)
+
+#summary(full_model)
+# Display the AIC of the full model
+aic_full_model <- AIC(full_model)
+cat("AIC of the full model:", aic_full_model, "\n")
+
+# Now, fit models with subsets of predictors and compare AIC
+# Model with log_age and sex
+model1 <- lm(log(SL_cm) ~ log(BurnAge) * Type, data = MidshipmanMales)
+#summary(model1)
+aic_model1 <- AIC(model1)
+cat("AIC of the model with log_age and Type:", aic_model1, "\n")
+
+model2 <- lm(log(SL_cm) ~ log(BurnAge) * Location, data = MidshipmanMales)
+aic_model2 <- AIC(model2)
+cat("AIC of the model with log_age and Region:", aic_model2, "\n")
+
+# Model with log_age and location
+model3 <- lm(log(SL_cm) ~ log(BurnAge), data = MidshipmanMales)
+aic_model3 <- AIC(model3)
+cat("AIC of the model with log_age:", aic_model3, "\n")
+
+best_model <- which.min(c(aic_full_model, aic_model1, aic_model2, aic_model3))
+cat("Best model:", best_model, "\n")
+
+ggplot(data = MidshipmanDataMeasurementType, aes(x = as.factor(Year), y = BurnAge, fill = as.factor(Year)))+
+  geom_boxplot()
+
+MidshipmanDataMeasurementType.nosneaks_3 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 3)
+MidshipmanDataMeasurementType.nosneaks_4 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 4)
+MidshipmanDataMeasurementType.nosneaks_5 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 5)
+MidshipmanDataMeasurementType.nosneaks_6 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 6)
+MidshipmanDataMeasurementType.nosneaks_7 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 7)
+MidshipmanDataMeasurementType.nosneaks_8 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 8)
+MidshipmanDataMeasurementType.nosneaks_9 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 9)
+MidshipmanDataMeasurementType.nosneaks_10 <- subset(MidshipmanDataMeasurementType.nosneaks, MidshipmanDataMeasurementType.nosneaks$BurnAge == 10)
+
+perm.t.test(MidshipmanDataMeasurementType.nosneaks_3$SL_cm ~ MidshipmanDataMeasurementType.nosneaks_3$Sex)
+perm.t.test(MidshipmanDataMeasurementType.nosneaks_4$SL_cm ~ MidshipmanDataMeasurementType.nosneaks_4$Sex)
+perm.t.test(MidshipmanDataMeasurementType.nosneaks_5$SL_cm ~ MidshipmanDataMeasurementType.nosneaks_5$Sex)
+perm.t.test(MidshipmanDataMeasurementType.nosneaks_6$SL_cm ~ MidshipmanDataMeasurementType.nosneaks_6$Sex)
+perm.t.test(MidshipmanDataMeasurementType.nosneaks_7$SL_cm ~ MidshipmanDataMeasurementType.nosneaks_7$Sex)
+
+#GM vs SM year
+full_model <- lm(log(SL_cm) ~ log(BurnAge) * Type * Year * Location, data = MidshipmanMales)
+
+#summary(full_model)
+# Display the AIC of the full model
+aic_full_model <- AIC(full_model)
+cat("AIC of the full model:", aic_full_model, "\n")
+
+# Now, fit models with subsets of predictors and compare AIC
+# Model with log_age and sex
+model1 <- lm(log(SL_cm) ~ log(BurnAge) * Type, data = MidshipmanMales)
+#summary(model1)
+aic_model1 <- AIC(model1)
+cat("AIC of the model with log_age and Type:", aic_model1, "\n")
+
+model2 <- lm(log(SL_cm) ~ log(BurnAge) * Location, data = MidshipmanMales)
+aic_model2 <- AIC(model2)
+cat("AIC of the model with log_age and Region:", aic_model2, "\n")
+
+# Model with log_age and location
+model3 <- lm(log(SL_cm) ~ log(BurnAge) * Year, data = MidshipmanMales)
+aic_model3 <- AIC(model3)
+cat("AIC of the model with log_age:", aic_model3, "\n")
+
+best_model <- which.min(c(aic_full_model, aic_model1, aic_model2, aic_model3))
+cat("Best model:", best_model, "\n")
+
+
+ggplot(data = MidshipmanMales, aes(x = log(BurnAge), y = log(SL_cm), col = Location, shape = Type))+
+  geom_point(size = 2)+
+  stat_smooth(method = "lm", se = F)
+```
+
+
+#BrantleyBassCohorts
+```{r}
+install.packages("quantmod")
+library(mixdist)
+library(FSA)
+library(FSAdata)
+library(plotrix)
+library(MASS)
+library(quantmod)
+
+lengths <- read_excel("C:/Users/QuindazziM/Downloads/BrantleyBassLengths.xlsx", sheet = 1)
+
+lengths$SL <- as.numeric(lengths$SL)
+
+length_data <- data.frame(length = lengths$SL)
+
+wss <- (nrow(length_data) - 1) * sum(apply(length_data, 2, var))
+for (i in 2:10) wss[i] <- sum(kmeans(length_data, centers = i)$withinss)
+
+plot(1:10, wss, type = "b", xlab = "Number of Clusters", ylab = "Within groups sum of squares", main = "Elbow Method for Optimal Clusters")
+
+set.seed(123) 
+num_clusters <- 5
+kmeans_fit <- kmeans(length_data, centers = num_clusters)
+
+length_data$cluster <- kmeans_fit$cluster
+
+ggplot(length_data, aes(x = length, fill = as.factor(cluster))) +
+  geom_histogram(binwidth = 1,  color = "black") +
+  labs(x = "Length (cm)", y = "Frequency", fill = "Cluster") +
+  theme(axis.title.x = element_text(size = 14, face = "bold"), axis.text.x = element_text(size = 12), axis.ticks.x = element_blank(), axis.title.y = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 12), plot.title = element_text(size = 16, face = "bold.italic"), legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 12), panel.background = element_rect(fill = "white"), axis.line = element_line(color = "black"), legend.position = "NULL")
+```
